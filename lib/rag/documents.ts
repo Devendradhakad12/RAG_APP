@@ -32,8 +32,8 @@ export const sampleDocuments: SampleDocument[] = [
   {
     id: "doc-5",
     title: "Who is Devendra?",
-    category: "Model API",
+    category: "Introduction",
     content:
-      "Devendra is a software engineer and AI enthusiast who enjoys building applications that leverage the latest advancements in machine learning and natural language processing. He has experience in web development, cloud computing, and AI model integration.",
+      "Devendra Dhakad is an aspiring full-stack AI engineer and MCA student specializing in Artificial Intelligence and Machine Learning. He has hands-on experience building modern web applications with technologies such as React, Next.js, Node.js, and various databases. Through freelance work and personal projects, he has developed practical skills in designing scalable, user-friendly software and integrating AI capabilities into real-world solutions. Passionate about continuous learning, Devendra actively studies data structures, system design, and emerging AI technologies. His ambition is to create innovative products that address meaningful challenges while growing into a versatile technology professional with a lasting impact on the industry.",
   },
 ];
