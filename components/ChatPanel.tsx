@@ -60,7 +60,8 @@ export function ChatPanel() {
             while (true) {
                 const { done, value } = await reader.read();
                 if (done) break;
-                assistantText += decoder.decode(value, { stream: true });
+                const chunkText = decoder.decode(value, { stream: true });
+                assistantText += chunkText;
                 setMessages((previous) => {
                     const next = [...previous];
                     next[next.length - 1] = { role: 'assistant', content: assistantText };
@@ -68,12 +69,15 @@ export function ChatPanel() {
                 });
             }
 
-            assistantText += decoder.decode();
-            setMessages((previous) => {
-                const next = [...previous];
-                next[next.length - 1] = { role: 'assistant', content: assistantText };
-                return next;
-            });
+            const tail = decoder.decode();
+            if (tail) {
+                assistantText += tail;
+                setMessages((previous) => {
+                    const next = [...previous];
+                    next[next.length - 1] = { role: 'assistant', content: assistantText };
+                    return next;
+                });
+            }
         } catch (requestError) {
             const message = requestError instanceof Error ? requestError.message : 'Unexpected error';
             setError(message);

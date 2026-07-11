@@ -43,6 +43,14 @@ async function initializeStore() {
   return vectorStore;
 }
 
+function buildContextPrompt(query: string, context: string) {
+  if (!context.trim()) {
+    return `Answer briefly.\n\nQ: ${query}`;
+  }
+
+  return `Answer briefly using this context.\n\nQ: ${query}\n\nContext: ${context}`;
+}
+
 export async function getOrCreateRagWorkflow() {
   if (workflow) return workflow;
 
@@ -54,7 +62,7 @@ export async function getOrCreateRagWorkflow() {
     const queryEmbedding = await embedText(state.query);
     const scoredChunks = await vectorStore.similaritySearchWithScores(
       queryEmbedding,
-      3,
+      2,
     );
     const bestScore = scoredChunks[0]?.score ?? 0;
     const relevantChunks =
@@ -64,17 +72,15 @@ export async function getOrCreateRagWorkflow() {
 
     const context = relevantChunks
       .map(({ chunk }) => {
-        return `Source: ${chunk.metadata.title} (${chunk.metadata.category})\n${chunk.content}`;
+        return `${chunk.content}`;
       })
-      .join("\n\n");
+      .join("\n");
 
     return { context };
   });
 
   graph.addNode("generate", async (state: typeof RagAnnotation.State) => {
-    const prompt = state.context.trim()
-      ? `You are a helpful assistant. Use the retrieved context to answer the user question. If the context is limited, say so clearly.\n\nQuestion: ${state.query}\n\nContext:\n${state.context}`
-      : `You are a helpful assistant. The retrieved context is empty or not relevant, so answer the user's question directly using your general knowledge.\n\nQuestion: ${state.query}`;
+    const prompt = buildContextPrompt(state.query, state.context);
     const answer = await generateWithGoogleLlm(prompt);
     return { answer };
   });
