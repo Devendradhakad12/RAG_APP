@@ -29,4 +29,11 @@ export const sampleDocuments: SampleDocument[] = [
     content:
       "Gemini can be used from TypeScript with the Google GenAI SDK. A concise system prompt, relevant retrieved chunks, and a clear task description usually produce better answers for domain-specific questions.",
   },
+  {
+    id: "doc-5",
+    title: "Who is Devendra?",
+    category: "Model API",
+    content:
+      "Devendra is a software engineer and AI enthusiast who enjoys building applications that leverage the latest advancements in machine learning and natural language processing. He has experience in web development, cloud computing, and AI model integration.",
+  },
 ];

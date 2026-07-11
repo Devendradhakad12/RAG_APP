@@ -13,6 +13,11 @@ function cosineSimilarity(a: number[], b: number[]): number {
   return dot / (magnitudeA * magnitudeB);
 }
 
+export interface ScoredChunk {
+  chunk: DocumentChunk;
+  score: number;
+}
+
 export class InMemoryVectorStore {
   private chunks: DocumentChunk[] = [];
   private embeddings: number[][] = [];
@@ -26,15 +31,20 @@ export class InMemoryVectorStore {
     queryEmbedding: number[],
     topK = 3,
   ): Promise<DocumentChunk[]> {
+    const scored = await this.similaritySearchWithScores(queryEmbedding, topK);
+    return scored.map((entry) => entry.chunk).filter(Boolean);
+  }
+
+  async similaritySearchWithScores(
+    queryEmbedding: number[],
+    topK = 3,
+  ): Promise<ScoredChunk[]> {
     const scored = this.embeddings.map((embedding, index) => ({
       chunk: this.chunks[index],
       score: cosineSimilarity(embedding, queryEmbedding),
     }));
 
     scored.sort((left, right) => right.score - left.score);
-    return scored
-      .slice(0, topK)
-      .map((entry) => entry.chunk)
-      .filter(Boolean);
+    return scored.slice(0, topK).filter((entry) => Boolean(entry.chunk));
   }
 }

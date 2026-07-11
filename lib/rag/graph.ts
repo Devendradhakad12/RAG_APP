@@ -52,22 +52,29 @@ export async function getOrCreateRagWorkflow() {
 
   graph.addNode("retrieve", async (state: typeof RagAnnotation.State) => {
     const queryEmbedding = await embedText(state.query);
-    const relevantChunks = await vectorStore.similaritySearch(
+    const scoredChunks = await vectorStore.similaritySearchWithScores(
       queryEmbedding,
       3,
     );
+    const bestScore = scoredChunks[0]?.score ?? 0;
+    const relevantChunks =
+      bestScore >= 0.2
+        ? scoredChunks.filter((entry) => entry.score >= 0.2)
+        : [];
+
     const context = relevantChunks
-      .map(
-        (chunk) =>
-          `Source: ${chunk.metadata.title} (${chunk.metadata.category})\n${chunk.content}`,
-      )
+      .map(({ chunk }) => {
+        return `Source: ${chunk.metadata.title} (${chunk.metadata.category})\n${chunk.content}`;
+      })
       .join("\n\n");
 
     return { context };
   });
 
   graph.addNode("generate", async (state: typeof RagAnnotation.State) => {
-    const prompt = `You are a helpful assistant. Use the retrieved context to answer the user question. If the context is limited, say so clearly.\n\nQuestion: ${state.query}\n\nContext:\n${state.context}`;
+    const prompt = state.context.trim()
+      ? `You are a helpful assistant. Use the retrieved context to answer the user question. If the context is limited, say so clearly.\n\nQuestion: ${state.query}\n\nContext:\n${state.context}`
+      : `You are a helpful assistant. The retrieved context is empty or not relevant, so answer the user's question directly using your general knowledge.\n\nQuestion: ${state.query}`;
     const answer = await generateWithGoogleLlm(prompt);
     return { answer };
   });
