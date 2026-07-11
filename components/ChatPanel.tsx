@@ -54,29 +54,47 @@ export function ChatPanel() {
             const reader = response.body.getReader();
             const decoder = new TextDecoder();
             let assistantText = '';
+            let renderedText = '';
+            let typingTimer: number | null = null;
 
             setMessages((previous) => [...previous, { role: 'assistant', content: '' }]);
+
+            const updateAssistantMessage = (content: string) => {
+                setMessages((previous) => {
+                    const next = [...previous];
+                    next[next.length - 1] = { role: 'assistant', content };
+                    return next;
+                });
+            };
+
+            const startTypingAnimation = () => {
+                if (typingTimer) return;
+
+                const revealNextCharacter = () => {
+                    if (renderedText.length < assistantText.length) {
+                        renderedText = assistantText.slice(0, renderedText.length + 1);
+                        updateAssistantMessage(renderedText);
+                        typingTimer = window.setTimeout(revealNextCharacter, 16);
+                    } else {
+                        typingTimer = null;
+                    }
+                };
+
+                revealNextCharacter();
+            };
 
             while (true) {
                 const { done, value } = await reader.read();
                 if (done) break;
                 const chunkText = decoder.decode(value, { stream: true });
                 assistantText += chunkText;
-                setMessages((previous) => {
-                    const next = [...previous];
-                    next[next.length - 1] = { role: 'assistant', content: assistantText };
-                    return next;
-                });
+                startTypingAnimation();
             }
 
             const tail = decoder.decode();
             if (tail) {
                 assistantText += tail;
-                setMessages((previous) => {
-                    const next = [...previous];
-                    next[next.length - 1] = { role: 'assistant', content: assistantText };
-                    return next;
-                });
+                startTypingAnimation();
             }
         } catch (requestError) {
             const message = requestError instanceof Error ? requestError.message : 'Unexpected error';

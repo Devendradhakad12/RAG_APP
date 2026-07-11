@@ -29,12 +29,12 @@ export async function POST(request: NextRequest) {
     const encoder = new TextEncoder();
     const stream = new ReadableStream<Uint8Array>({
       start(controller) {
-        const chunks = answer.match(/.{1,80}/g) ?? [answer];
+        const chunks = answer.match(/.{1,24}/g) ?? [answer];
 
         const writeChunk = async () => {
           for (const chunk of chunks) {
             controller.enqueue(encoder.encode(chunk));
-            await new Promise((resolve) => setTimeout(resolve, 20));
+            await new Promise((resolve) => setTimeout(resolve, 16));
           }
           controller.close();
         };
