@@ -1,7 +1,7 @@
 import type { SampleDocument } from "@/lib/rag/types";
 
 export const sampleDocuments: SampleDocument[] = [
-  {
+  /* {
     id: "doc-1",
     title: "Next.js App Router overview",
     category: "Framework",
@@ -28,9 +28,9 @@ export const sampleDocuments: SampleDocument[] = [
     category: "Model API",
     content:
       "Gemini can be used from TypeScript with the Google GenAI SDK. A concise system prompt, relevant retrieved chunks, and a clear task description usually produce better answers for domain-specific questions.",
-  },
+  }, */
   {
-    id: "doc-5",
+    id: "doc-1",
     title: "Who is Devendra?",
     category: "Introduction",
     content:

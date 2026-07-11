@@ -11,7 +11,7 @@ interface ChatMessageModel {
 const starterMessages: ChatMessageModel[] = [
     {
         role: 'assistant',
-        content: 'Hello! Ask me something about Next.js, LangGraph, or Gemini and I will answer with retrieved context.',
+        content: 'Hello! Ask me something about Devendra Dhakad and I will answer with retrieved context.',
     },
 ];
 
