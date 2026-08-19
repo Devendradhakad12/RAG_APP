@@ -12,8 +12,10 @@
         "@langchain/core": "^1.2.2",
         "@langchain/google-genai": "^2.2.0",
         "@langchain/langgraph": "^1.4.7",
+        "@types/pdf-parse": "^1.1.5",
         "langchain": "^1.5.3",
         "next": "^15.3.3",
+        "pdf-parse": "^1.1.1",
         "react": "^19.1.0",
         "react-dom": "^19.1.0"
     },

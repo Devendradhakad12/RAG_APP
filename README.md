@@ -45,6 +45,7 @@ The application intelligently retrieves relevant document chunks based on user q
 ### 1. **Document Management**
    - Support for multiple documents with metadata (ID, title, category, content)
    - Local in-memory document storage with sample data
+   - Upload your own text-based PDF files (up to 10 MB) and ask questions about the selected PDF
    - Document categorization for better organization
 
 ### 2. **Intelligent Document Processing**

@@ -1,6 +1,6 @@
 'use client';
 
-import { FormEvent, useMemo, useState } from 'react';
+import { ChangeEvent, FormEvent, useMemo, useState } from 'react';
 import { ChatMessage } from '@/components/ChatMessage';
 
 interface ChatMessageModel {
@@ -19,6 +19,9 @@ export function ChatPanel() {
     const [messages, setMessages] = useState<ChatMessageModel[]>(starterMessages);
     const [input, setInput] = useState('');
     const [isStreaming, setIsStreaming] = useState(false);
+    const [isUploading, setIsUploading] = useState(false);
+    const [documentId, setDocumentId] = useState('sample');
+    const [documentTitle, setDocumentTitle] = useState('Sample documents');
     const [error, setError] = useState('');
 
     const trimmedInput = input.trim();
@@ -39,7 +42,7 @@ export function ChatPanel() {
             const response = await fetch('/api/chat', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ query }),
+                body: JSON.stringify({ query, documentId }),
             });
 
             if (!response.ok) {
@@ -105,8 +108,41 @@ export function ChatPanel() {
         }
     };
 
+    const handleUpload = async (event: ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        event.target.value = '';
+        if (!file) return;
+
+        setError('');
+        setIsUploading(true);
+
+        try {
+            const formData = new FormData();
+            formData.append('file', file);
+            const response = await fetch('/api/upload', { method: 'POST', body: formData });
+            const payload = await response.json().catch(() => ({}));
+            if (!response.ok) {
+                throw new Error(payload.error ?? 'The PDF could not be uploaded.');
+            }
+
+            setDocumentId(payload.document.id);
+            setDocumentTitle(payload.document.title);
+            setMessages([
+                {
+                    role: 'assistant',
+                    content: `I am ready to answer questions from “${payload.document.title}”.`,
+                },
+            ]);
+        } catch (uploadError) {
+            setError(uploadError instanceof Error ? uploadError.message : 'The PDF could not be uploaded.');
+        } finally {
+            setIsUploading(false);
+        }
+    };
+
     const statusLabel = useMemo(() => {
         if (error) return 'Unable to answer';
+        if (isUploading) return 'Uploading PDF…';
         if (isStreaming) return 'Streaming answer…';
         return 'Ready';
     }, [error, isStreaming]);
@@ -116,7 +152,10 @@ export function ChatPanel() {
             <div className="mb-4 flex items-center justify-between border-b border-slate-800 pb-3">
                 <div>
                     <p className="text-xs uppercase tracking-[0.3em] text-cyan-300">RAG chat</p>
-                    <h2 className="mt-1 text-xl font-semibold text-white">Ask the knowledge base</h2>
+                    <h2 className="mt-1 text-xl font-semibold text-white">Ask your document</h2>
+                    <p className="mt-1 max-w-sm truncate text-xs text-slate-400" title={documentTitle}>
+                        Using: {documentTitle}
+                    </p>
                 </div>
                 <div className="rounded-full border border-cyan-400/30 bg-cyan-400/10 px-3 py-1 text-sm text-cyan-300">
                     {statusLabel}
@@ -135,17 +174,31 @@ export function ChatPanel() {
                 </div>
             ) : null}
 
-            <form onSubmit={handleSubmit} className="mt-4 flex flex-col gap-3 md:flex-row">
+            <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <label className="inline-flex cursor-pointer items-center justify-center rounded-2xl border border-cyan-400/40 bg-cyan-400/10 px-4 py-3 text-sm font-semibold text-cyan-200 transition hover:bg-cyan-400/20">
+                    {isUploading ? 'Uploading…' : 'Upload PDF'}
+                    <input
+                        type="file"
+                        accept="application/pdf,.pdf"
+                        onChange={handleUpload}
+                        disabled={isUploading || isStreaming}
+                        className="sr-only"
+                    />
+                </label>
+                <span className="text-xs text-slate-500">PDF only, up to 10 MB</span>
+            </div>
+
+            <form onSubmit={handleSubmit} className="mt-3 flex flex-col gap-3 md:flex-row">
                 <input
                     value={input}
                     onChange={(event) => setInput(event.target.value)}
-                    placeholder="Ask a question about the sample documents"
+                    placeholder="Ask a question about this PDF"
                     className="flex-1 rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none ring-0 transition focus:border-cyan-400"
-                    disabled={isStreaming}
+                    disabled={isStreaming || isUploading}
                 />
                 <button
                     type="submit"
-                    disabled={!canSend}
+                    disabled={!canSend || isUploading}
                     className="rounded-2xl bg-cyan-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-cyan-500 disabled:cursor-not-allowed disabled:bg-slate-700"
                 >
                     {isStreaming ? 'Thinking…' : 'Send'}

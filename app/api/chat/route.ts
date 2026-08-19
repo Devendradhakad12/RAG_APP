@@ -11,6 +11,10 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const query = typeof body.query === "string" ? body.query.trim() : "";
+    const documentId =
+      typeof body.documentId === "string" && body.documentId.trim()
+        ? body.documentId.trim()
+        : "sample";
 
     if (!query) {
       return NextResponse.json(
@@ -20,7 +24,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Run the LangGraph workflow and stream the answer back in small text chunks.
-    const result = await runRagWorkflow(query);
+    const result = await runRagWorkflow(query, documentId);
     const answer =
       typeof result.answer === "string"
         ? result.answer

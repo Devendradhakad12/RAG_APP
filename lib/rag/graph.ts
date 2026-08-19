@@ -3,17 +3,41 @@ import { buildChunksFromDocuments } from "@/lib/rag/chunking";
 import { sampleDocuments } from "@/lib/rag/documents";
 import { embedText, embedTexts } from "@/lib/rag/embeddings";
 import { generateWithGoogleLlm } from "@/lib/rag/googleApi";
+import { getUploadedDocument } from "@/lib/rag/uploads";
 import { InMemoryVectorStore } from "@/lib/rag/vector-store";
 
 // Cache the workflow and vector store so subsequent requests reuse the same in-memory graph.
 let workflow: ReturnType<any> | null = null;
-let store: InMemoryVectorStore | null = null;
+const stores = new Map<string, InMemoryVectorStore>();
+const storePromises = new Map<string, Promise<InMemoryVectorStore>>();
 
-function getOrCreateStore() {
-  if (!store) {
-    store = new InMemoryVectorStore();
+async function getOrCreateStore(documentId: string) {
+  const existingStore = stores.get(documentId);
+  if (existingStore) return existingStore;
+
+  const existingPromise = storePromises.get(documentId);
+  if (existingPromise) return existingPromise;
+
+  const storePromise = (async () => {
+    const document = documentId === "sample" ? null : getUploadedDocument(documentId);
+    if (documentId !== "sample" && !document) {
+      throw new Error("The uploaded document could not be found. Please upload it again.");
+    }
+
+    const vectorStore = new InMemoryVectorStore();
+    const chunks = buildChunksFromDocuments(document ? [document] : sampleDocuments);
+    const chunkEmbeddings = await embedTexts(chunks.map((chunk) => chunk.content));
+    vectorStore.addDocuments(chunks, chunkEmbeddings);
+    stores.set(documentId, vectorStore);
+    return vectorStore;
+  })();
+
+  storePromises.set(documentId, storePromise);
+  try {
+    return await storePromise;
+  } finally {
+    storePromises.delete(documentId);
   }
-  return store;
 }
 
 const RagAnnotation = Annotation.Root({
@@ -32,16 +56,12 @@ const RagAnnotation = Annotation.Root({
       right ?? left ?? "",
     default: () => "",
   }),
+  documentId: Annotation<string>({
+    value: (left: string | undefined, right: string | undefined) =>
+      right ?? left ?? "sample",
+    default: () => "sample",
+  }),
 });
-
-async function initializeStore() {
-  const vectorStore = getOrCreateStore();
-  const chunks = buildChunksFromDocuments(sampleDocuments);
-  const chunkTexts = chunks.map((chunk) => chunk.content);
-  const chunkEmbeddings = await embedTexts(chunkTexts);
-  vectorStore.addDocuments(chunks, chunkEmbeddings);
-  return vectorStore;
-}
 
 function buildContextPrompt(query: string, context: string) {
   if (!context.trim()) {
@@ -54,11 +74,10 @@ function buildContextPrompt(query: string, context: string) {
 export async function getOrCreateRagWorkflow() {
   if (workflow) return workflow;
 
-  const vectorStore = await initializeStore();
-
   const graph = new StateGraph(RagAnnotation) as any;
 
   graph.addNode("retrieve", async (state: typeof RagAnnotation.State) => {
+    const vectorStore = await getOrCreateStore(state.documentId);
     const queryEmbedding = await embedText(state.query);
     const scoredChunks = await vectorStore.similaritySearchWithScores(
       queryEmbedding,
@@ -93,7 +112,7 @@ export async function getOrCreateRagWorkflow() {
   return workflow;
 }
 
-export async function runRagWorkflow(query: string) {
+export async function runRagWorkflow(query: string, documentId = "sample") {
   const app = await getOrCreateRagWorkflow();
-  return app.invoke({ query });
+  return app.invoke({ query, documentId });
 }
